@@ -1,0 +1,83 @@
+Description: Testing patterns and standards
+Globs: src/tests/**/*.test.ts
+
+# Testing Rules
+
+## Test Organization
+- Unit tests: `src/tests/unit/`
+- Integration tests: `src/tests/integration/`
+- E2E tests: `src/tests/e2e/`
+- Mirror source structure in test directories
+
+## Unit Testing
+- Test all services in isolation
+- Mock external API calls
+- Test utility functions with various inputs
+- Test edge cases and error conditions
+- Aim for high code coverage
+
+## Integration Testing
+- Test API routes with real service calls (or mocked)
+- Test complete workflows
+- Test error scenarios
+- Validate response formats
+
+## E2E Testing
+- Test complete user workflows
+- Test with real drug names
+- Test error handling from user perspective
+- Test accessibility features
+- Test responsive design
+
+## Test Patterns
+
+### Service Tests
+```typescript
+describe('ServiceName', () => {
+  it('should handle success case', async () => {
+    // Mock API response
+    // Call service method
+    // Assert results
+  });
+
+  it('should handle error case', async () => {
+    // Mock API error
+    // Call service method
+    // Assert error handling
+  });
+});
+```
+
+### Component Tests
+- Test component rendering
+- Test user interactions
+- Test prop changes
+- Test event emissions
+- Test accessibility
+
+### API Route Tests
+- Test request validation
+- Test successful responses
+- Test error responses
+- Test HTTP status codes
+- Test response formats
+
+## Test Data
+- Use realistic test data
+- Test with common medications
+- Test edge cases (empty strings, null values, etc.)
+- Test with various SIG formats
+- Test with different days' supply values
+
+## Performance Testing
+- Test response times (<2 seconds)
+- Test with concurrent requests
+- Test API rate limiting
+- Test timeout handling
+
+## Accessibility Testing
+- Test with screen readers
+- Test keyboard navigation
+- Test focus management
+- Test ARIA labels
+- Test error announcements

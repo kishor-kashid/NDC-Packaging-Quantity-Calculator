@@ -1,0 +1,68 @@
+Description: TypeScript type definitions and patterns
+Globs: src/lib/types/**/*.ts
+
+# Type Definition Rules
+
+## Type Organization
+- One file per domain (drug, ndc, calculation)
+- Export all types from `index.ts`
+- Use descriptive, PascalCase names
+- Document types with JSDoc comments
+
+## Type Patterns
+
+### API Response Types
+```typescript
+interface APIResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: ErrorResponse;
+}
+```
+
+### Input Types
+```typescript
+interface DrugInput {
+  drugName?: string;
+  ndc?: string;
+}
+```
+
+### Service Response Types
+- Match external API response structures
+- Normalize to internal types
+- Include all necessary fields
+- Mark optional fields appropriately
+
+## Type-Specific Rules
+
+### Drug Types (drug.types.ts)
+- `DrugInput` - User input for drug name or NDC
+- `RxCUI` - RxCUI code type
+- `RxNormResponse` - RxNorm API response structure
+
+### NDC Types (ndc.types.ts)
+- `NDC` - NDC code and information
+- `PackageInfo` - Package size and details
+- `NDCResponse` - FDA API response structure
+- `NDCStatus` - Active/inactive status
+
+### Calculation Types (calculation.types.ts)
+- `CalculationInput` - Input for calculation
+- `CalculationResult` - Complete calculation result
+- `DispenseRecommendation` - Recommended NDC packages
+- `Warning` - Overfill/underfill warnings
+
+## Best Practices
+- Use `interface` for object shapes
+- Use `type` for unions and intersections
+- Avoid `any` - use `unknown` if needed
+- Use branded types for IDs (e.g., `RxCUI`)
+- Make types readonly when appropriate
+- Use utility types (Partial, Pick, Omit) when helpful
+
+## Documentation
+- Document all exported types
+- Explain complex type relationships
+- Provide usage examples in JSDoc
+- Document optional vs required fields

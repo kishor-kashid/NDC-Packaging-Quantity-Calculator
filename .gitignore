@@ -95,8 +95,9 @@ dist
 .temp
 .cache
 
-# Sveltekit cache directory
+# SvelteKit
 .svelte-kit/
+build/
 
 # vitepress build output
 **/.vitepress/dist
@@ -137,3 +138,30 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS files
+Thumbs.db
+.DS_Store
+*.log
+
+# Environment variables (keep .env.example)
+.env.local
+.env.*.local
+
+# Test coverage
+coverage/
+.nyc_output/
+*.lcov
+
+# Temporary files
+*.tmp
+*.temp
+.cache/

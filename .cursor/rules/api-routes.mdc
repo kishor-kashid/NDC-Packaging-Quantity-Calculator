@@ -1,0 +1,74 @@
+Description: API route patterns and standards
+Globs: src/routes/api/**/*.ts
+
+# API Route Rules
+
+## Route Structure
+All API routes follow SvelteKit's `+server.ts` pattern:
+
+```typescript
+import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+
+export const POST: RequestHandler = async ({ request }) => {
+  // Validate input
+  // Call service
+  // Handle errors
+  // Return response
+};
+```
+
+## Request Handling
+- Validate all inputs
+- Use TypeScript types for request/response
+- Handle malformed requests gracefully
+- Return appropriate HTTP status codes
+
+## Response Format
+- Use consistent JSON response format
+- Include error details in error responses
+- Return structured data in success responses
+- Use SvelteKit's `json()` helper
+
+## Error Handling
+- Return proper HTTP status codes:
+  - 200: Success
+  - 400: Bad Request (validation errors)
+  - 404: Not Found
+  - 500: Internal Server Error
+- Include error messages in response body
+- Log errors server-side
+- Never expose sensitive information
+
+## Route-Specific Rules
+
+### /api/normalize
+- Accept: `{ drugName: string }` or `{ ndc: string }`
+- Return: `{ rxcui: string, drugName: string }`
+- Handle RxNorm API errors
+- Cache results when appropriate
+
+### /api/ndc
+- Accept: `{ rxcui: string }`
+- Return: `{ ndcs: NDC[] }`
+- Filter inactive NDCs
+- Include package information
+
+### /api/calculate
+- Accept: `{ drugName?: string, ndc?: string, sig: string, daysSupply: number }`
+- Return: Complete calculation result with recommendations
+- Orchestrate: normalize → NDCs → calculate
+- Include warnings and alerts
+
+## Performance
+- Implement request timeout handling
+- Add rate limiting (production)
+- Cache responses when appropriate
+- Optimize API calls (parallelize when possible)
+
+## Testing
+- Test with valid inputs
+- Test with invalid inputs
+- Test error scenarios
+- Test timeout handling
+- Test rate limiting

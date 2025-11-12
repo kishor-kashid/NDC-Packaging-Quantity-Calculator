@@ -1,0 +1,62 @@
+Description: Service layer patterns and standards
+Globs: src/lib/services/**/*.ts
+
+# Service Layer Rules
+
+## Service Architecture
+All services should follow this pattern:
+
+```typescript
+export class ServiceName {
+  private baseUrl: string;
+  private apiKey?: string;
+
+  constructor(config?: ServiceConfig) {
+    // Initialize with configuration
+  }
+
+  async methodName(params: ParamType): Promise<ReturnType> {
+    // Implementation with error handling
+  }
+}
+```
+
+## Error Handling
+- Always handle API errors gracefully
+- Implement retry logic for transient failures
+- Set appropriate timeouts (2 second threshold)
+- Return typed error responses
+- Never throw unhandled errors
+
+## API Integration
+- Use environment variables for API keys
+- Implement rate limiting handling
+- Cache responses when appropriate
+- Log API calls for debugging (development only)
+
+## Testing
+- Mock external API calls in tests
+- Test error scenarios
+- Test timeout handling
+- Test retry logic
+
+## Service-Specific Rules
+
+### RxNormService
+- Normalize drug names to RxCUI
+- Handle brand and generic names
+- Support NDC input as alternative
+- Cache normalization results
+
+### FDAService
+- Retrieve NDC information
+- Filter inactive NDCs
+- Parse package size information
+- Handle rate limits
+
+### CalculatorService
+- Parse SIG (dosing instructions)
+- Calculate total quantity
+- Select optimal packages
+- Detect overfill/underfill
+- Handle special dosage forms (liquids, insulin, inhalers)

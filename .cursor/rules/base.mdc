@@ -1,0 +1,84 @@
+Description: Core project rules and standards for NDC Packaging & Quantity Calculator
+Globs: **/*.{ts,js,svelte}
+
+# NDC Packaging & Quantity Calculator - Base Rules
+
+## Project Overview
+This is a SvelteKit + TypeScript application for Foundation Health that helps pharmacists match prescriptions with valid NDCs and calculate correct dispense quantities.
+
+## Code Standards
+
+### TypeScript
+- Always use TypeScript strict mode
+- Define types before implementation (type-first development)
+- Use interfaces for object shapes, types for unions/primitives
+- Document all public APIs with JSDoc comments
+- Export types from `src/lib/types/index.ts` for easy importing
+
+### SvelteKit Patterns
+- Use SvelteKit file-based routing
+- API routes in `src/routes/api/*/+server.ts`
+- Page components in `src/routes/*/+page.svelte`
+- Load functions in `src/routes/*/+page.ts`
+- Use SvelteKit's built-in form handling and data loading
+
+### Component Guidelines
+- Keep components small and focused
+- Separate presentational and container components
+- Use props for data, events for actions
+- Implement accessibility features (ARIA labels, keyboard navigation)
+- Style with scoped CSS or global CSS variables
+
+### Service Pattern
+- One service class per external API or business domain
+- Services handle API communication, error handling, and response parsing
+- Services are testable in isolation
+- Use dependency injection where appropriate
+
+### Error Handling
+- Use centralized error handling utilities
+- Return consistent error response formats
+- Provide user-friendly error messages
+- Use proper HTTP status codes in API routes
+- Log errors appropriately (avoid console.log in production)
+
+### Testing
+- Write unit tests for all services and utilities
+- Write integration tests for API routes
+- Write E2E tests for complete workflows
+- Test edge cases and error scenarios
+- Maintain test coverage
+
+## Performance Requirements
+- All queries must complete in <2 seconds
+- Implement debouncing for user inputs
+- Cache API responses when appropriate
+- Lazy load components when possible
+- Optimize bundle size with code splitting
+
+## File Organization
+- Types: `src/lib/types/`
+- Services: `src/lib/services/`
+- Utils: `src/lib/utils/`
+- Components: `src/lib/components/`
+- API Routes: `src/routes/api/`
+- Tests: `src/tests/`
+
+## Naming Conventions
+- Files: kebab-case (e.g., `drug-input.svelte`)
+- Components: PascalCase (e.g., `DrugInput`)
+- Services: PascalCase with "Service" suffix (e.g., `RxNormService`)
+- Types: PascalCase (e.g., `DrugInput`, `NDCResponse`)
+- Functions: camelCase (e.g., `calculateQuantity`)
+- Constants: UPPER_SNAKE_CASE (e.g., `MAX_RETRY_ATTEMPTS`)
+
+## Commit Messages
+- Write meaningful commit messages
+- Reference PR numbers when applicable
+- Use conventional commit format when possible
+
+## Documentation
+- Document all public APIs with JSDoc
+- Add code comments for complex logic
+- Keep README.md updated
+- Document API endpoints with examples

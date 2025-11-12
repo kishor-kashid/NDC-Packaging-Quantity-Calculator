@@ -1,0 +1,75 @@
+Description: Svelte component patterns and standards
+Globs: src/lib/components/**/*.svelte
+
+# Component Rules
+
+## Component Structure
+Follow this structure for all components:
+
+```svelte
+<script lang="ts">
+  // Imports
+  // Props interface
+  // Local state
+  // Functions
+</script>
+
+<!-- Template -->
+<template>
+  <!-- Component markup -->
+</template>
+
+<style>
+  /* Scoped or global styles */
+</style>
+```
+
+## Props and Events
+- Define props with TypeScript interfaces
+- Use Svelte's prop validation
+- Emit typed events
+- Document props with JSDoc
+
+## Accessibility
+- Add ARIA labels to all interactive elements
+- Support keyboard navigation
+- Manage focus appropriately
+- Announce errors to screen readers
+- Use semantic HTML
+
+## Styling
+- Use CSS variables for theming
+- Follow responsive design patterns
+- Support mobile, tablet, and desktop
+- Use Foundation Health branding colors
+- Implement focus states for accessibility
+
+## Component-Specific Rules
+
+### Input Components
+- Validate input in real-time
+- Show error messages clearly
+- Provide helper text and examples
+- Support autocomplete where appropriate
+- Handle loading states
+
+### Display Components
+- Show loading states
+- Handle empty states
+- Display errors gracefully
+- Support keyboard navigation
+- Make data copyable when appropriate
+
+### Results Components
+- Highlight important information
+- Show warnings prominently
+- Make tables sortable
+- Support responsive layouts
+- Provide JSON export
+
+## Performance
+- Use Svelte's reactivity efficiently
+- Avoid unnecessary re-renders
+- Lazy load heavy components
+- Debounce user inputs
+- Optimize list rendering
