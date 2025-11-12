@@ -1,3 +1,4 @@
-// Page load function (if needed for data loading)
-// Currently empty - will be populated when implementing API integration
+// Page load function
+// Currently empty - data loading handled client-side via API calls
 
+export const ssr = false;

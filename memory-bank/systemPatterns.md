@@ -134,13 +134,19 @@ User Display ← Components ← API Routes ← Services ← Response
 
 ### RxNorm API Integration
 - **Method:** HTTP requests to RxNorm API
-- **Error Handling:** Retry logic, timeout handling
+- **Primary Endpoint:** `approximateTerm.json` (more reliable than `drugname.json`)
+- **Fallback:** `drugname.json` and `spellingsuggestions.json` endpoints
+- **Error Handling:** Retry logic, timeout handling, graceful degradation
+- **Status:** ✅ Working - Successfully finds RxCUI codes for drug names
 - **Caching:** Consider caching for repeated queries (performance optimization)
 
 ### FDA NDC Directory API Integration
 - **Method:** HTTP requests to FDA API
-- **Error Handling:** Rate limit handling, timeout handling
+- **Search Patterns:** Multiple fallback patterns (proprietary_name, non_proprietary_name, brand_name, generic_name)
+- **Error Handling:** Graceful degradation - returns empty arrays instead of throwing errors
+- **Status:** ✅ Working - Successfully retrieves NDCs, but product name/package size parsing needs improvement
 - **Filtering:** Filter inactive NDCs before returning results
+- **Known Issue:** Product names and package sizes not parsing correctly from FDA responses
 
 ## Calculation Algorithm Pattern
 
