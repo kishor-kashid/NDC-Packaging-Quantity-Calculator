@@ -23,55 +23,95 @@ import { handleAPIError, logError } from '../utils/index.js';
 export class CalculatorService {
 	/**
 	 * Parses SIG (dosing instructions) to extract dose, frequency, and units
+	 * Uses enhanced SIG parser service for complex patterns
 	 * @param sig - SIG string (e.g., "Take 1 tablet by mouth twice daily")
 	 * @returns Parsed SIG object
 	 */
-	parseSIG(sig: string): ParsedSIG {
-		const normalized = sig.toLowerCase().trim();
-
-		// Extract dose (number before unit)
-		const doseMatch = normalized.match(/(\d+(?:\.\d+)?)\s*(tablet|tab|capsule|cap|ml|mg|g|unit|units|puff|puffs|dose|doses)/i);
-		const dose = doseMatch ? parseFloat(doseMatch[1]) : 1;
-
-		// Extract unit
-		const unitMatch = normalized.match(/(tablet|tab|capsule|cap|ml|mg|g|unit|units|puff|puffs|dose|doses)/i);
-		const unit = unitMatch ? unitMatch[1].toLowerCase() : 'unit';
-
-		// Extract frequency
-		let frequency = 1; // Default to once daily
-		if (normalized.includes('twice') || normalized.includes('2x') || normalized.includes('bid')) {
-			frequency = 2;
-		} else if (normalized.includes('three times') || normalized.includes('3x') || normalized.includes('tid')) {
-			frequency = 3;
-		} else if (normalized.includes('four times') || normalized.includes('4x') || normalized.includes('qid')) {
-			frequency = 4;
-		} else if (normalized.includes('once') || normalized.includes('daily') || normalized.includes('qd')) {
-			frequency = 1;
-		} else if (normalized.includes('every')) {
-			// Extract "every X hours"
-			const everyMatch = normalized.match(/every\s*(\d+)\s*(hour|hr|h)/i);
-			if (everyMatch) {
-				const hours = parseInt(everyMatch[1], 10);
-				frequency = Math.round(24 / hours);
-			}
-		}
-
-		return {
-			dose,
-			unit: this.normalizeUnit(unit),
-			frequency,
-			instructions: sig
-		};
+	async parseSIG(sig: string): Promise<ParsedSIG> {
+		// Import here to avoid circular dependency
+		const { sigParserService } = await import('./sig-parser.service.js');
+		return await sigParserService.parseSIG(sig);
 	}
 
 	/**
 	 * Calculates total quantity needed based on SIG and days' supply
+	 * Handles complex schedules, PRN, and tapering
 	 * @param parsedSIG - Parsed SIG object
 	 * @param daysSupply - Days' supply
 	 * @returns Total quantity needed
 	 */
 	calculateTotalQuantity(parsedSIG: ParsedSIG, daysSupply: number): number {
+		// Handle PRN (as needed) - use average dose estimate
+		if (parsedSIG.prn) {
+			const avgDose = parsedSIG.averageDailyDose || parsedSIG.dose;
+			// For PRN, estimate 50% of maximum frequency (conservative estimate)
+			const estimatedFrequency = parsedSIG.frequency > 0 ? parsedSIG.frequency * 0.5 : 2;
+			return Math.ceil(avgDose * estimatedFrequency * daysSupply);
+		}
+
+		// Handle complex schedules
+		if (parsedSIG.isComplex && parsedSIG.schedule && parsedSIG.schedule.length > 0) {
+			let totalQuantity = 0;
+
+			for (const entry of parsedSIG.schedule) {
+				// Check if entry has day range
+				if (entry.dayRange) {
+					// Parse day range (e.g., "day 1", "days 1-3", "days 2+")
+					const dayRange = this.parseDayRange(entry.dayRange, daysSupply);
+					const daysForEntry = dayRange.end - dayRange.start + 1;
+					
+					if (daysForEntry > 0) {
+						totalQuantity += entry.dose * entry.frequency * daysForEntry;
+					}
+				} else {
+					// Regular schedule entry - apply to all days
+					totalQuantity += entry.dose * entry.frequency * daysSupply;
+				}
+			}
+
+			return totalQuantity;
+		}
+
+		// Simple calculation
 		return parsedSIG.dose * parsedSIG.frequency * daysSupply;
+	}
+
+	/**
+	 * Parses day range string (e.g., "day 1", "days 1-3", "days 2+")
+	 * @param dayRange - Day range string
+	 * @param totalDays - Total days supply
+	 * @returns Start and end day numbers
+	 */
+	private parseDayRange(dayRange: string, totalDays: number): { start: number; end: number } {
+		const normalized = dayRange.toLowerCase().trim();
+
+		// Pattern: "day 1"
+		const singleDayMatch = normalized.match(/day\s+(\d+)/);
+		if (singleDayMatch) {
+			const day = parseInt(singleDayMatch[1], 10);
+			return { start: day, end: day };
+		}
+
+		// Pattern: "days 1-3"
+		const rangeMatch = normalized.match(/days?\s+(\d+)\s*-\s*(\d+)/);
+		if (rangeMatch) {
+			return {
+				start: parseInt(rangeMatch[1], 10),
+				end: parseInt(rangeMatch[2], 10)
+			};
+		}
+
+		// Pattern: "days 2+" or "day 2 onwards"
+		const onwardsMatch = normalized.match(/days?\s+(\d+)\s*\+/);
+		if (onwardsMatch) {
+			return {
+				start: parseInt(onwardsMatch[1], 10),
+				end: totalDays
+			};
+		}
+
+		// Default: apply to all days
+		return { start: 1, end: totalDays };
 	}
 
 	/**
@@ -280,8 +320,8 @@ export class CalculatorService {
 		availableNDCs: NDC[]
 	): Promise<CalculationResult> {
 		try {
-			// Parse SIG
-			const parsedSIG = this.parseSIG(input.sig);
+			// Parse SIG (now async)
+			const parsedSIG = await this.parseSIG(input.sig);
 
 			// Calculate total quantity
 			const totalQuantity = this.calculateTotalQuantity(parsedSIG, input.daysSupply);

@@ -47,8 +47,19 @@ These problems lead to:
 ### Key Features
 
 - **Drug Normalization** - Handles brand names, generic names, and common misspellings
-- **SIG Parsing** - Extracts dose, frequency, and units from natural language instructions
+- **Drug Autocomplete** - Real-time drug name suggestions with RxNorm integration
+- **SIG Parsing** - Enhanced parsing with support for:
+  - Simple patterns (e.g., "Take 1 tablet twice daily")
+  - Complex patterns (e.g., "Take 1 tablet in the morning and 1 at bedtime")
+  - Dose ranges (e.g., "Take 1-2 tablets as needed")
+  - Tapering schedules (e.g., "Take 2 tablets on day 1, then 1 tablet daily")
+  - PRN medications with conservative estimates
+  - AI-assisted parsing for complex cases
 - **Package Selection** - Algorithm selects best combination of packages to meet quantity needs
+- **Dosage Form Filtering** - Filter NDCs by dosage form with mismatch warnings
+- **Strength Filtering** - Filter NDCs by drug strength with mismatch warnings
+- **Insurance Formulary Checks** - Check coverage, tier levels, and prior authorization
+- **Drug Interaction Warnings** - Check drug-drug interactions, allergies, and contraindications
 - **Special Cases** - Handles liquids, insulin, inhalers, and other special dosage forms
 - **Multi-Pack Support** - Calculates combinations of packages when single package insufficient
 

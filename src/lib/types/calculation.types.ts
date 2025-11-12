@@ -6,17 +6,43 @@ import type { NDC, PackageInfo } from './ndc.types.js';
 import type { RxCUI } from './drug.types.js';
 
 /**
+ * Complex dosing schedule entry
+ */
+export interface DosingScheduleEntry {
+	/** Dose amount */
+	dose: number;
+	/** Maximum dose (for ranges like "1-2 tablets") */
+	maxDose?: number;
+	/** Frequency per day */
+	frequency: number;
+	/** Time of day (e.g., "morning", "bedtime", "with meals") */
+	timeOfDay?: string;
+	/** Day range (e.g., "day 1", "days 1-3") */
+	dayRange?: string;
+	/** Whether this is PRN (as needed) */
+	prn?: boolean;
+}
+
+/**
  * Parsed SIG (dosing instructions) components
  */
 export interface ParsedSIG {
-	/** Dose amount (e.g., 1, 2, 10) */
+	/** Primary dose amount (e.g., 1, 2, 10) - for simple cases */
 	dose: number;
 	/** Unit of measurement (e.g., "tablet", "ml", "mg") */
 	unit: string;
-	/** Frequency per day */
+	/** Frequency per day - for simple cases */
 	frequency: number;
 	/** Additional instructions */
 	instructions?: string;
+	/** Whether this is a complex schedule */
+	isComplex?: boolean;
+	/** Complex dosing schedule (for multi-time, tapering, etc.) */
+	schedule?: DosingScheduleEntry[];
+	/** Whether this is PRN (as needed) */
+	prn?: boolean;
+	/** Average daily dose (calculated from schedule) */
+	averageDailyDose?: number;
 }
 
 /**
@@ -47,7 +73,21 @@ export enum WarningType {
 	/** Package size mismatch */
 	PACKAGE_MISMATCH = 'PACKAGE_MISMATCH',
 	/** Unusual quantity detected */
-	UNUSUAL_QUANTITY = 'UNUSUAL_QUANTITY'
+	UNUSUAL_QUANTITY = 'UNUSUAL_QUANTITY',
+	/** Dosage form mismatch */
+	DOSAGE_FORM_MISMATCH = 'DOSAGE_FORM_MISMATCH',
+	/** Strength mismatch */
+	STRENGTH_MISMATCH = 'STRENGTH_MISMATCH',
+	/** Insurance coverage issue */
+	INSURANCE_COVERAGE = 'INSURANCE_COVERAGE',
+	/** Prior authorization required */
+	PRIOR_AUTH_REQUIRED = 'PRIOR_AUTH_REQUIRED',
+	/** Drug interaction detected */
+	DRUG_INTERACTION = 'DRUG_INTERACTION',
+	/** Allergy detected */
+	ALLERGY = 'ALLERGY',
+	/** Contraindication detected */
+	CONTRAINDICATION = 'CONTRAINDICATION'
 }
 
 /**

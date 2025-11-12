@@ -8,9 +8,13 @@ import type { RequestHandler } from './$types';
 import { rxNormService } from '$lib/services/rxnorm.service.js';
 import { fdaService } from '$lib/services/fda.service.js';
 import { calculatorService } from '$lib/services/calculator.service.js';
+import { filteringService } from '$lib/services/filtering.service.js';
+import { formularyService } from '$lib/services/formulary.service.js';
+import { drugInteractionService } from '$lib/services/drug-interaction.service.js';
 import { validateCalculationInput } from '$lib/utils/index.js';
 import { createSuccessResponse, createFailedResponse } from '$lib/utils/index.js';
-import type { CalculationInput, NDC, RxCUI } from '$lib/types/index.js';
+import type { CalculationInput, NDC, RxCUI, DosageFormFilter, Warning } from '$lib/types/index.js';
+import { WarningType } from '$lib/types/index.js';
 
 /**
  * Detects if a string is an NDC code (8-11 digits, with or without dashes)
@@ -40,6 +44,16 @@ export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json();
 		let { drugName, ndc, sig, daysSupply } = body as CalculationInput;
+		
+		// Extract filter options from request
+		const dosageFormFilter = body.dosageFormFilter as DosageFormFilter | undefined;
+		const strengthFilter = body.strengthFilter as string | undefined;
+		const checkInsurance = body.checkInsurance as boolean | undefined;
+		const checkInteractions = body.checkInteractions as boolean | undefined;
+		const insurancePlan = body.insurancePlan as string | undefined;
+		const knownAllergies = body.knownAllergies as string[] | undefined;
+		const patientConditions = body.patientConditions as string[] | undefined;
+		const currentMedications = body.currentMedications as NDC[] | undefined;
 
 		// Auto-detect NDC code if drugName looks like an NDC
 		if (drugName && !ndc && isNDCCode(drugName)) {
@@ -202,7 +216,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			
 			// If only drug name was provided (no NDC), still calculate the quantity as a fallback
 			// This allows drug name searches to work even if no NDC packages are found
-			const parsedSIG = calculatorService.parseSIG(sig!);
+			const parsedSIG = await calculatorService.parseSIG(sig!);
 			const totalQuantity = calculatorService.calculateTotalQuantity(parsedSIG, daysSupply!);
 			
 			return json(
@@ -226,7 +240,34 @@ export const POST: RequestHandler = async ({ request }) => {
 			);
 		}
 
-		// Step 5: Calculate quantity and select packages
+		// Step 5: Apply filters (dosage form and strength)
+		let filteredNDCs = availableNDCs;
+		
+		// Extract dosage form from SIG if not provided
+		const preferredDosageForm = dosageFormFilter || filteringService.extractDosageForm(sig!);
+		
+		// Filter by dosage form
+		if (preferredDosageForm && preferredDosageForm !== 'ALL') {
+			filteredNDCs = filteringService.filterByDosageForm(filteredNDCs, preferredDosageForm);
+		}
+		
+		// Filter by strength
+		if (strengthFilter) {
+			filteredNDCs = filteringService.filterByStrength(filteredNDCs, strengthFilter);
+		} else {
+			// Try to extract strength from drug name
+			const extractedStrength = filteringService.extractStrength(finalDrugName);
+			if (extractedStrength.strength) {
+				filteredNDCs = filteringService.filterByStrength(filteredNDCs, extractedStrength.strength);
+			}
+		}
+		
+		// If filters resulted in no NDCs, use original list but add warnings
+		if (filteredNDCs.length === 0) {
+			filteredNDCs = availableNDCs;
+		}
+
+		// Step 6: Calculate quantity and select packages
 		const calculationInput: CalculationInput = {
 			drugName: finalDrugName,
 			rxcui: rxcui as RxCUI | undefined,
@@ -234,7 +275,123 @@ export const POST: RequestHandler = async ({ request }) => {
 			daysSupply: daysSupply!
 		};
 
-		const result = await calculatorService.calculate(calculationInput, availableNDCs);
+		const result = await calculatorService.calculate(calculationInput, filteredNDCs);
+
+		// Step 7: Add dosage form and strength warnings
+		const additionalWarnings: Warning[] = [];
+		
+		// Dosage form warnings
+		if (preferredDosageForm && preferredDosageForm !== 'ALL') {
+			const dosageFormWarnings = filteringService.generateDosageFormWarnings(
+				filteredNDCs,
+				preferredDosageForm
+			);
+			additionalWarnings.push(...dosageFormWarnings);
+		}
+		
+		// Strength warnings
+		const strengthFromDrug = filteringService.extractStrength(finalDrugName);
+		if (strengthFromDrug.strength || strengthFilter) {
+			const expectedStrength = strengthFromDrug.strength ? strengthFromDrug : filteringService.extractStrength(strengthFilter || '');
+			if (expectedStrength.strength) {
+				const strengthWarnings = filteringService.generateStrengthWarnings(
+					filteredNDCs,
+					expectedStrength
+				);
+				additionalWarnings.push(...strengthWarnings);
+			}
+		}
+
+		// Step 8: Check insurance formulary (if enabled)
+		if (checkInsurance && filteredNDCs.length > 0) {
+			try {
+				const formularyInfoMap = await formularyService.checkCoverageBatch(
+					filteredNDCs.slice(0, 10), // Limit to first 10 for performance
+					insurancePlan
+				);
+				
+				// Add insurance warnings
+				for (const [ndcCode, info] of formularyInfoMap.entries()) {
+					if (!info.covered) {
+						additionalWarnings.push({
+							type: WarningType.INSURANCE_COVERAGE,
+							message: `NDC ${ndcCode} is not covered by insurance (Tier ${info.tier || 'N/A'})`,
+							severity: 'high',
+							details: info
+						});
+					}
+					
+					if (info.priorAuthRequired) {
+						additionalWarnings.push({
+							type: WarningType.PRIOR_AUTH_REQUIRED,
+							message: `Prior authorization required for NDC ${ndcCode}`,
+							severity: 'high',
+							details: info
+						});
+					}
+				}
+			} catch (error) {
+				console.warn('Formulary check failed:', error);
+			}
+		}
+
+		// Step 9: Check drug interactions and allergies (if enabled)
+		if (checkInteractions && filteredNDCs.length > 0) {
+			try {
+				// Check interactions with current medications
+				if (currentMedications && currentMedications.length > 0) {
+					for (const currentMed of currentMedications) {
+						for (const ndc of filteredNDCs.slice(0, 5)) { // Limit for performance
+							const interactions = await drugInteractionService.checkInteractions(ndc, [currentMed]);
+							for (const interaction of interactions) {
+								additionalWarnings.push({
+									type: WarningType.DRUG_INTERACTION,
+									message: `Drug interaction: ${interaction.description}`,
+									severity: drugInteractionService.getInteractionSeverity(interaction),
+									details: interaction
+								});
+							}
+						}
+					}
+				}
+				
+				// Check allergies
+				if (knownAllergies && knownAllergies.length > 0) {
+					for (const ndc of filteredNDCs.slice(0, 5)) {
+						const allergyInfo = drugInteractionService.checkAllergies(ndc, knownAllergies);
+						if (allergyInfo.hasAllergy) {
+							additionalWarnings.push({
+								type: WarningType.ALLERGY,
+								message: `Allergy detected: ${allergyInfo.allergens.join(', ')}`,
+								severity: allergyInfo.severity === 'life-threatening' ? 'high' : 
+								          allergyInfo.severity === 'severe' ? 'high' : 'medium',
+								details: allergyInfo
+							});
+						}
+					}
+				}
+				
+				// Check contraindications
+				if (patientConditions && patientConditions.length > 0) {
+					for (const ndc of filteredNDCs.slice(0, 5)) {
+						const contraindicationInfo = drugInteractionService.checkContraindications(ndc, patientConditions);
+						if (contraindicationInfo.hasContraindication) {
+							additionalWarnings.push({
+								type: WarningType.CONTRAINDICATION,
+								message: `Contraindication: ${contraindicationInfo.contraindications.join(', ')}`,
+								severity: 'high',
+								details: contraindicationInfo
+							});
+						}
+					}
+				}
+			} catch (error) {
+				console.warn('Interaction/allergy check failed:', error);
+			}
+		}
+
+		// Merge additional warnings
+		result.warnings = [...result.warnings, ...additionalWarnings];
 
 		return json(createSuccessResponse(result), { status: 200 });
 	} catch (error) {

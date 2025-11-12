@@ -54,6 +54,50 @@ This document provides sample data for testing the NDC Packaging & Quantity Calc
 ```
 **Expected Result:** 360 puffs total (2 puffs × 6 times/day × 30 days)
 
+### Example 6: Complex Pattern - Multiple Times
+```json
+{
+  "drugName": "Lisinopril",
+  "sig": "Take 1 tablet in the morning and 1 at bedtime",
+  "daysSupply": 30
+}
+```
+**Expected Result:** 60 tablets total (1 tablet × 2 times/day × 30 days)
+
+### Example 7: Dose Range (PRN)
+```json
+{
+  "drugName": "Ibuprofen",
+  "sig": "Take 1-2 tablets as needed",
+  "daysSupply": 7
+}
+```
+**Expected Result:** Conservative estimate based on average dose and frequency
+
+### Example 8: With Filters
+```json
+{
+  "drugName": "Lisinopril",
+  "sig": "Take 1 tablet twice daily",
+  "daysSupply": 30,
+  "dosageFormFilter": "TABLET",
+  "strengthFilter": "20mg"
+}
+```
+**Expected Result:** 60 tablets, filtered to tablet form with 20mg strength
+
+### Example 9: With Insurance Check
+```json
+{
+  "drugName": "Lisinopril",
+  "sig": "Take 1 tablet twice daily",
+  "daysSupply": 30,
+  "checkInsurance": true,
+  "insurancePlan": "Blue Cross Blue Shield"
+}
+```
+**Expected Result:** 60 tablets + insurance coverage warnings if applicable
+
 ## Sample Drug Names
 
 ### Brand Names

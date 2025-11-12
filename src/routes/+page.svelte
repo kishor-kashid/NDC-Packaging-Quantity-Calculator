@@ -1,9 +1,10 @@
 <script lang="ts">
-	import DrugInput from '$lib/components/DrugInput.svelte';
+	import DrugInputAutocomplete from '$lib/components/DrugInputAutocomplete.svelte';
+	import FilterPanel from '$lib/components/FilterPanel.svelte';
 	import SigInput from '$lib/components/SigInput.svelte';
 	import DaysSupplyInput from '$lib/components/DaysSupplyInput.svelte';
 	import ResultsSummary from '$lib/components/ResultsSummary.svelte';
-	import type { CalculationResult } from '$lib/types/index.js';
+	import type { CalculationResult, DosageFormFilter } from '$lib/types/index.js';
 	import { getUserFriendlyErrorMessage } from '$lib/utils/index.js';
 	import type { PageProps } from './$types';
 
@@ -13,6 +14,16 @@
 	let drugName: string = '';
 	let sig: string = '';
 	let daysSupply: number | undefined = undefined;
+	
+	// Filter options
+	let dosageFormFilter: DosageFormFilter = null;
+	let strengthFilter: string = '';
+	let showInsurance: boolean = false;
+	let showInteractions: boolean = false;
+	let insurancePlan: string = '';
+	let knownAllergies: string = '';
+	let patientConditions: string = '';
+	let currentMedications: string = '';
 
 	let result: CalculationResult | null = null;
 	let loading: boolean = false;
@@ -53,6 +64,12 @@
 		result = null;
 
 		try {
+			// Parse allergies, conditions, and medications from comma-separated strings
+			const allergiesArray = knownAllergies.split(',').map(a => a.trim()).filter(a => a);
+			const conditionsArray = patientConditions.split(',').map(c => c.trim()).filter(c => c);
+			// For medications, we'd need to parse NDCs - simplified for now
+			const medicationsArray: any[] = []; // Would need to be parsed from input
+			
 			const response = await fetch('/api/calculate', {
 				method: 'POST',
 				headers: {
@@ -61,7 +78,15 @@
 				body: JSON.stringify({
 					drugName: drugName.trim() || undefined,
 					sig: sig.trim(),
-					daysSupply: finalDaysSupply
+					daysSupply: finalDaysSupply,
+					dosageFormFilter: dosageFormFilter,
+					strengthFilter: strengthFilter.trim() || undefined,
+					checkInsurance: showInsurance,
+					checkInteractions: showInteractions,
+					insurancePlan: insurancePlan.trim() || undefined,
+					knownAllergies: allergiesArray.length > 0 ? allergiesArray : undefined,
+					patientConditions: conditionsArray.length > 0 ? conditionsArray : undefined,
+					currentMedications: medicationsArray.length > 0 ? medicationsArray : undefined
 				})
 			});
 
@@ -123,11 +148,6 @@
 
 <div class="page-container">
 	<div class="container">
-		<div class="page-header">
-			<h1>NDC Packaging & Quantity Calculator</h1>
-			<p class="subtitle">Accurately match prescriptions with valid NDCs and calculate correct dispense quantities</p>
-		</div>
-
 		<main class="main-content">
 			<div class="form-card card fade-in">
 				<div class="card-header">
@@ -136,9 +156,54 @@
 				</div>
 				
 				<form on:submit|preventDefault={calculate} class="calculator-form">
-					<DrugInput bind:value={drugName} />
+					<DrugInputAutocomplete bind:value={drugName} />
 					<SigInput bind:value={sig} />
 					<DaysSupplyInput bind:value={daysSupply} />
+					
+					<FilterPanel
+						bind:dosageForm={dosageFormFilter}
+						bind:strength={strengthFilter}
+						bind:showInsurance={showInsurance}
+						bind:showInteractions={showInteractions}
+					/>
+					
+					{#if showInsurance}
+						<div class="filter-group">
+							<label for="insurance-plan" class="filter-label">Insurance Plan (Optional)</label>
+							<input
+								id="insurance-plan"
+								type="text"
+								class="filter-input"
+								placeholder="e.g., Blue Cross Blue Shield"
+								bind:value={insurancePlan}
+							/>
+						</div>
+					{/if}
+					
+					{#if showInteractions}
+						<div class="interaction-fields">
+							<div class="filter-group">
+								<label for="known-allergies" class="filter-label">Known Allergies (comma-separated)</label>
+								<input
+									id="known-allergies"
+									type="text"
+									class="filter-input"
+									placeholder="e.g., Penicillin, Sulfa"
+									bind:value={knownAllergies}
+								/>
+							</div>
+							<div class="filter-group">
+								<label for="patient-conditions" class="filter-label">Patient Conditions (comma-separated)</label>
+								<input
+									id="patient-conditions"
+									type="text"
+									class="filter-input"
+									placeholder="e.g., Pregnancy, Liver Disease"
+									bind:value={patientConditions}
+								/>
+							</div>
+						</div>
+					{/if}
 
 					{#if error}
 						<div class="error-alert" role="alert">
@@ -193,7 +258,7 @@
 			{/if}
 
 			{#if result}
-				<div class="fade-in">
+				<div class="slide-up">
 					<ResultsSummary {result} />
 				</div>
 			{/if}
@@ -211,31 +276,6 @@
 		max-width: 1280px;
 		margin: 0 auto;
 		padding: 0 var(--spacing-xl);
-	}
-
-	.page-header {
-		text-align: center;
-		margin-bottom: var(--spacing-xxxl);
-		max-width: 800px;
-		margin-left: auto;
-		margin-right: auto;
-	}
-
-	.page-header h1 {
-		font-size: var(--font-size-xxxl);
-		margin-bottom: var(--spacing-md);
-		color: var(--text-primary);
-		background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
-	}
-
-	.subtitle {
-		font-size: var(--font-size-lg);
-		color: var(--text-secondary);
-		line-height: var(--line-height-relaxed);
-		margin: 0;
 	}
 
 	.main-content {
@@ -261,19 +301,62 @@
 		gap: var(--spacing-lg);
 	}
 
+	.filter-group {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-xs);
+	}
+
+	.filter-label {
+		font-size: var(--font-size-sm);
+		font-weight: var(--font-weight-medium);
+		color: var(--text-primary);
+	}
+
+	.filter-input {
+		width: 100%;
+		padding: var(--spacing-sm) var(--spacing-md);
+		border: 2px solid var(--border);
+		border-radius: var(--radius-md);
+		font-size: var(--font-size-base);
+		background: var(--bg-primary);
+		color: var(--text-primary);
+		font-family: inherit;
+		transition: all var(--transition-base);
+	}
+
+	.filter-input:hover {
+		border-color: var(--border-dark);
+	}
+
+	.filter-input:focus {
+		outline: none;
+		border-color: var(--primary);
+		box-shadow: 0 0 0 4px var(--primary-lighter);
+		background: var(--bg-primary);
+	}
+
+	.interaction-fields {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-md);
+	}
+
 	.error-alert {
 		display: flex;
 		align-items: flex-start;
 		gap: var(--spacing-md);
 		padding: var(--spacing-lg);
-		background: var(--error-light);
+		background: linear-gradient(135deg, var(--error-light) 0%, #fee2e2 100%);
 		border: 1px solid var(--error);
 		border-left: 4px solid var(--error);
-		border-radius: var(--radius-md);
+		border-radius: var(--radius-lg);
 		color: #991b1b;
 		margin-bottom: 0;
 		font-size: var(--font-size-base);
 		line-height: var(--line-height-relaxed);
+		box-shadow: 0 2px 4px -1px rgba(239, 68, 68, 0.2);
+		animation: shake 0.5s ease-in-out;
 	}
 
 	.error-icon {
@@ -303,29 +386,53 @@
 	.button-primary {
 		background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
 		color: var(--text-inverse);
+		position: relative;
+		overflow: hidden;
+	}
+
+	.button-primary::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: -100%;
+		width: 100%;
+		height: 100%;
+		background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+		transition: left 0.5s;
+	}
+
+	.button-primary:hover:not(:disabled)::before {
+		left: 100%;
 	}
 
 	.button-primary:hover:not(:disabled) {
 		background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
-		box-shadow: var(--shadow-md);
-		transform: translateY(-1px);
+		box-shadow: 0 8px 16px -4px rgba(37, 99, 235, 0.4);
+		transform: translateY(-2px);
 	}
 
 	.button-primary:active:not(:disabled) {
 		transform: translateY(0);
-		box-shadow: var(--shadow-sm);
+		box-shadow: 0 4px 8px -2px rgba(37, 99, 235, 0.3);
 	}
 
 	.button-secondary {
 		background: var(--bg-primary);
 		color: var(--text-primary);
 		border: 2px solid var(--border);
+		position: relative;
 	}
 
 	.button-secondary:hover:not(:disabled) {
 		background: var(--bg-secondary);
-		border-color: var(--border-dark);
-		box-shadow: var(--shadow-sm);
+		border-color: var(--primary-light);
+		box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.1);
+		transform: translateY(-1px);
+		color: var(--primary);
+	}
+
+	.button-secondary:active:not(:disabled) {
+		transform: translateY(0);
 	}
 
 	.button svg {
@@ -340,6 +447,7 @@
 	.loading-card {
 		text-align: center;
 		padding: var(--spacing-xxxl);
+		background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
 	}
 
 	.loading-content {
@@ -351,6 +459,20 @@
 
 	.loading-spinner {
 		animation: spin 1.5s linear infinite;
+		position: relative;
+	}
+
+	.loading-spinner::before {
+		content: '';
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: 8px;
+		height: 8px;
+		background: var(--primary);
+		border-radius: 50%;
+		animation: pulse 1.5s ease-in-out infinite;
 	}
 
 	.loading-text {
@@ -358,12 +480,17 @@
 		font-weight: var(--font-weight-semibold);
 		color: var(--text-primary);
 		margin: 0;
+		background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-clip: text;
 	}
 
 	.loading-subtext {
 		font-size: var(--font-size-sm);
 		color: var(--text-secondary);
 		margin: 0;
+		animation: pulse 2s ease-in-out infinite;
 	}
 
 	@media (max-width: 768px) {
@@ -373,18 +500,6 @@
 
 		.container {
 			padding: 0 var(--spacing-lg);
-		}
-
-		.page-header {
-			margin-bottom: var(--spacing-xxl);
-		}
-
-		.page-header h1 {
-			font-size: var(--font-size-xxl);
-		}
-
-		.subtitle {
-			font-size: var(--font-size-base);
 		}
 
 		.form-card {

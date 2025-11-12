@@ -53,6 +53,11 @@ src/
   - `RxNormService` - Handles RxNorm API interactions
   - `FDAService` - Handles FDA NDC Directory API interactions
   - `CalculatorService` - Handles quantity calculations and package selection
+  - `DrugSearchService` - Handles drug name search and autocomplete
+  - `FilteringService` - Handles dosage form and strength filtering
+  - `FormularyService` - Handles insurance formulary checks
+  - `DrugInteractionService` - Handles drug interactions, allergies, contraindications
+  - `SigParserService` - Enhanced SIG parsing with complex patterns and AI assistance
 
 ### 2. Type-First Development
 - **Pattern:** Define all types before implementation
@@ -72,9 +77,10 @@ src/
 ### 4. Component Composition
 - **Pattern:** Small, focused, reusable components
 - **Input Components:**
-  - `DrugInput.svelte` - Drug name/NDC input
+  - `DrugInputAutocomplete.svelte` - Drug name/NDC input with autocomplete
   - `SigInput.svelte` - SIG input
   - `DaysSupplyInput.svelte` - Days supply input
+  - `FilterPanel.svelte` - Dosage form, strength filters, and additional checks
 - **Display Components:**
   - `ResultsSummary.svelte` - Main results container
   - `NDCTable.svelte` - NDC table display
@@ -119,9 +125,14 @@ User Display ← Components ← API Routes ← Services ← Response
 
 ```
 +page.svelte (Container)
-├── DrugInput.svelte
+├── DrugInputAutocomplete.svelte
 ├── SigInput.svelte
 ├── DaysSupplyInput.svelte
+├── FilterPanel.svelte
+│   ├── Dosage form filter
+│   ├── Strength filter
+│   └── Additional checks (insurance, interactions)
+├── Insurance/Interaction fields (conditional)
 ├── ResultsSummary.svelte (when results available)
 │   ├── QuantityDisplay.svelte
 │   ├── NDCTable.svelte
@@ -140,6 +151,7 @@ User Display ← Components ← API Routes ← Services ← Response
 - **Error Handling:** Retry logic, timeout handling, graceful degradation
 - **Status:** ✅ Working - Successfully finds RxCUI codes for drug names and NDCs
 - **Caching:** Consider caching for repeated queries (performance optimization)
+- **Autocomplete:** Used by DrugSearchService for real-time drug name suggestions
 
 ### NDC Detection Pattern
 - **Auto-Detection:** Calculate endpoint automatically detects NDC codes in input
@@ -197,11 +209,12 @@ User Display ← Components ← API Routes ← Services ← Response
 ## Performance Patterns
 
 ### Optimization Strategies
-- **Debouncing:** Input debouncing for drug name search
-- **Caching:** Cache API responses for repeated queries
+- **Debouncing:** Input debouncing for drug name search (implemented in DrugInputAutocomplete)
+- **Caching:** Cache API responses for repeated queries (planned for future)
 - **Lazy Loading:** Lazy load results components
 - **Code Splitting:** Optimize bundle size with code splitting
 - **Timeout Handling:** 2-second timeout for API calls
+- **Batch Processing:** Formulary and interaction checks limited to first 5-10 NDCs for performance
 
 ## Security Patterns
 
@@ -215,8 +228,41 @@ User Display ← Components ← API Routes ← Services ← Response
 
 ### ARIA and Keyboard Navigation
 - ARIA labels on all interactive elements
-- Keyboard navigation support
+- Keyboard navigation support (including autocomplete dropdown)
 - Screen reader compatibility
 - Focus management
 - Clear error announcements
+- Keyboard shortcuts (Ctrl/Cmd+Enter to calculate)
+
+## New Feature Patterns
+
+### Drug Autocomplete Pattern
+- Real-time search with 300ms debounce
+- Keyboard navigation (arrow keys, Enter, Escape)
+- RxNorm API integration via DrugSearchService
+- Suggestion dropdown with brand/generic indicators
+
+### Filtering Pattern
+- Dosage form extraction from SIG or manual selection
+- Strength extraction from drug name or manual input
+- Filtering applied before calculation
+- Mismatch warnings generated for filtered NDCs
+
+### Formulary Check Pattern
+- Batch checking for multiple NDCs (limited to 10 for performance)
+- Coverage status, tier levels, prior authorization flags
+- Warnings added to results for uncovered NDCs
+
+### Interaction Check Pattern
+- Drug-drug interaction checking (limited to 5 NDCs)
+- Allergy checking against known allergens
+- Contraindication checking for patient conditions
+- Severity-based warning generation
+
+### Enhanced SIG Parsing Pattern
+- Rule-based parsing for common patterns
+- Complex schedule support (multiple times, tapering, ranges)
+- PRN medication handling with conservative estimates
+- AI-assisted parsing fallback (OpenAI API) when rules fail
+- Schedule-based quantity calculation
 

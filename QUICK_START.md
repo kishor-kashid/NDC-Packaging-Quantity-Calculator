@@ -12,6 +12,17 @@ The application will be available at `http://localhost:5173`
 
 ### Step 2: Test with Sample Data
 
+#### New Features to Try
+
+1. **Drug Autocomplete**: Start typing a drug name (e.g., "Lisinopril") and see real-time suggestions
+2. **Filters**: Use dosage form and strength filters to narrow down NDC options
+3. **Insurance Checks**: Enable "Check Insurance Coverage" to see coverage warnings
+4. **Interaction Checks**: Enable "Check Drug Interactions" and add allergies/conditions
+5. **Complex SIG Patterns**: Try patterns like:
+   - "Take 1 tablet in the morning and 1 at bedtime"
+   - "Take 1-2 tablets as needed"
+   - "Take 2 tablets on day 1, then 1 tablet daily"
+
 #### Option A: Use Common Drug Names
 
 Try these drug names that are known to work with RxNorm:

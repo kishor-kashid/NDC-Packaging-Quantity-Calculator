@@ -27,10 +27,23 @@ export { NDCStatus } from './ndc.types.js';
 // Calculation types
 export type {
 	ParsedSIG,
+	DosingScheduleEntry,
 	CalculationInput,
 	CalculationResult,
 	DispenseRecommendation,
 	Warning
 } from './calculation.types.js';
 export { WarningType, DosageForm } from './calculation.types.js';
+
+// Filtering types
+export type {
+	DosageFormFilter,
+	StrengthMatch,
+	DosageFormMatch,
+	FormularyInfo,
+	DrugInteraction,
+	AllergyInfo,
+	ContraindicationInfo,
+	DrugSuggestion
+} from './filtering.types.js';
 

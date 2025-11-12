@@ -103,7 +103,8 @@ body {
 	font-size: var(--font-size-base);
 	line-height: var(--line-height-normal);
 	color: var(--text-primary);
-	background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+	background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 50%, #f8fafc 100%);
+	background-attachment: fixed;
 	min-height: 100vh;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
@@ -209,21 +210,52 @@ textarea::placeholder {
 /* Cards */
 .card {
 	background: var(--bg-primary);
-	border-radius: var(--radius-lg);
-	box-shadow: var(--shadow-md);
+	border-radius: var(--radius-xl);
+	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
 	padding: var(--spacing-xl);
 	border: 1px solid var(--border);
 	transition: all var(--transition-base);
+	position: relative;
+	overflow: hidden;
+}
+
+.card::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 4px;
+	background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+	opacity: 0;
+	transition: opacity var(--transition-base);
 }
 
 .card:hover {
-	box-shadow: var(--shadow-lg);
+	box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.12), 0 4px 6px -2px rgba(0, 0, 0, 0.06);
+	transform: translateY(-2px);
+}
+
+.card:hover::before {
+	opacity: 1;
 }
 
 .card-header {
 	margin-bottom: var(--spacing-lg);
 	padding-bottom: var(--spacing-md);
-	border-bottom: 1px solid var(--border-light);
+	border-bottom: 2px solid var(--border-light);
+	position: relative;
+}
+
+.card-header::after {
+	content: '';
+	position: absolute;
+	bottom: -2px;
+	left: 0;
+	width: 60px;
+	height: 2px;
+	background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+	border-radius: var(--radius-full);
 }
 
 /* Loading Animation */
@@ -253,8 +285,35 @@ textarea::placeholder {
 	}
 }
 
+@keyframes shake {
+	0%, 100% {
+		transform: translateX(0);
+	}
+	10%, 30%, 50%, 70%, 90% {
+		transform: translateX(-4px);
+	}
+	20%, 40%, 60%, 80% {
+		transform: translateX(4px);
+	}
+}
+
+@keyframes slideUp {
+	from {
+		opacity: 0;
+		transform: translateY(20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
 .fade-in {
 	animation: fadeIn var(--transition-slow) ease-out;
+}
+
+.slide-up {
+	animation: slideUp 0.4s ease-out;
 }
 
 /* Responsive Design */

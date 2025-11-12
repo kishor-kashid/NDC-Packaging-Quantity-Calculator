@@ -10,17 +10,21 @@
 ### External APIs
 - **RxNorm API** - Drug name normalization to RxCUI
   - Purpose: Convert drug names (brand/generic) to standardized RxCUI codes
-  - Authentication: To be determined during implementation
+  - Authentication: Public API (no key required)
+  - Endpoints: `approximateTerm.json`, `drugname.json`, `spellingsuggestions.json`
   - Documentation: https://www.nlm.nih.gov/research/umls/rxnorm/overview.html
+  - Status: ✅ Integrated and working
 
 - **FDA NDC Directory API** - NDC and packaging information
   - Purpose: Retrieve NDC codes, package sizes, and active/inactive status
-  - Authentication: To be determined during implementation
+  - Authentication: Public API (no key required, rate limits apply)
   - Documentation: https://www.fda.gov/drugs/drug-approvals-and-databases/national-drug-code-directory
+  - Status: ✅ Integrated and working with multiple search strategies
 
-- **OpenAI API** - AI functionalities (future enhancement)
-  - Purpose: AI-accelerated features (specific use cases to be determined)
-  - Status: Mentioned in PRD but not detailed in initial requirements
+- **OpenAI API** - AI functionalities (optional enhancement)
+  - Purpose: AI-assisted SIG parsing for complex patterns
+  - Authentication: Requires API key (optional, system works without it)
+  - Status: ✅ Integrated as optional fallback for SIG parsing
 
 ### Cloud Platform
 - **Google Cloud Platform (GCP)** - Deployment and hosting
@@ -181,12 +185,15 @@
 ## Known Technical Challenges
 
 1. ✅ **API Rate Limits** - Handled with timeout and retry logic, graceful degradation
-2. ✅ **SIG Parsing** - Working correctly with regex patterns for common formats
+2. ✅ **SIG Parsing** - Enhanced with complex patterns, PRN support, AI-assisted parsing
 3. ✅ **Package Selection Algorithm** - Optimizing package combinations implemented
 4. ✅ **Performance** - Meeting <2 second requirement (verified in testing)
 5. ✅ **Error Handling** - Comprehensive error handling implemented
 6. ✅ **NDC Format Variations** - All formats (8-11 digits, with/without dashes) now supported
 7. ✅ **FDA API Response Parsing** - Product names and package sizes correctly extracted
 8. ✅ **Package-Level NDC Lookup** - Extracts product NDC and searches packaging array
-9. ⚠️ **API Response Caching** - Not yet implemented (planned for performance optimization)
+9. ✅ **Complex SIG Patterns** - Multiple times, ranges, PRN patterns implemented
+10. ⚠️ **Tapering Schedule Calculation** - Bug identified: day-range parsing needs fix
+11. ⚠️ **API Response Caching** - Not yet implemented (planned for performance optimization)
+12. ✅ **UI Performance** - Smooth animations and transitions, no performance issues
 
