@@ -136,17 +136,33 @@ User Display ← Components ← API Routes ← Services ← Response
 - **Method:** HTTP requests to RxNorm API
 - **Primary Endpoint:** `approximateTerm.json` (more reliable than `drugname.json`)
 - **Fallback:** `drugname.json` and `spellingsuggestions.json` endpoints
+- **NDC Support:** Handles NDC input directly via `getRxCUIFromNDC` method
 - **Error Handling:** Retry logic, timeout handling, graceful degradation
-- **Status:** ✅ Working - Successfully finds RxCUI codes for drug names
+- **Status:** ✅ Working - Successfully finds RxCUI codes for drug names and NDCs
 - **Caching:** Consider caching for repeated queries (performance optimization)
+
+### NDC Detection Pattern
+- **Auto-Detection:** Calculate endpoint automatically detects NDC codes in input
+- **Validation:** Supports 8-11 digit codes (was 10-11)
+- **Format Support:** With/without dashes, various patterns (4-4, 5-4-1, 5-4-2, etc.)
+- **Pattern Matching:** Regex patterns for NDC-like formats
+- **Invalid NDC Handling:** Returns error immediately when NDC not found (no calculation)
 
 ### FDA NDC Directory API Integration
 - **Method:** HTTP requests to FDA API
-- **Search Patterns:** Multiple fallback patterns (proprietary_name, non_proprietary_name, brand_name, generic_name)
-- **Error Handling:** Graceful degradation - returns empty arrays instead of throwing errors
-- **Status:** ✅ Working - Successfully retrieves NDCs, but product name/package size parsing needs improvement
+- **Search Strategies:** 6+ search patterns tried in order:
+  1. Product NDC with dashes (original format)
+  2. Package code with dashes (original format)
+  3. Package code cleaned (no dashes)
+  4. Product NDC cleaned (no dashes)
+  5. Package NDC extraction (for 11-digit codes, extracts product NDC and searches packaging array)
+  6. Padded formats (for 8-9 digit codes)
+- **Product Name Parsing:** Multiple fallback fields (proprietary_name, non_proprietary_name, generic_name, brand_name, dosage_form + strength)
+- **Package Size Parsing:** Enhanced regex patterns handling various formats, plural units, packaging array support
+- **Error Handling:** Graceful degradation with detailed logging
+- **Status:** ✅ Fully Working - All formats supported, product names and package sizes correctly extracted
 - **Filtering:** Filter inactive NDCs before returning results
-- **Known Issue:** Product names and package sizes not parsing correctly from FDA responses
+- **Package-Level NDC Support:** Extracts product NDC from package code and searches packaging array for matching package
 
 ## Calculation Algorithm Pattern
 

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { validateDaysSupply } from '$lib/utils/index.js';
+	import { afterUpdate } from 'svelte';
 
 	export let value: number | undefined = undefined;
 	export let placeholder: string = '30';
@@ -10,18 +11,43 @@
 	let inputError: string = '';
 	let isFocused: boolean = false;
 	let stringValue: string = value?.toString() || '';
+	let previousValue: number | undefined = value;
 
+	// Sync stringValue from value prop when it changes externally (using afterUpdate to avoid cycle)
+	afterUpdate(() => {
+		if (value !== previousValue && value !== undefined && value !== null) {
+			const newStringValue = value.toString();
+			if (newStringValue !== stringValue) {
+				stringValue = newStringValue;
+				previousValue = value;
+			}
+		}
+	});
+
+	// Update value from stringValue (one-way: stringValue -> value)
 	$: {
 		if (stringValue) {
 			const numValue = parseInt(stringValue, 10);
-			const validationError = validateDaysSupply(numValue);
-			inputError = validationError ? validationError.message : '';
-			if (!validationError) {
-				value = numValue;
+			if (!isNaN(numValue)) {
+				const validationError = validateDaysSupply(numValue);
+				inputError = validationError ? validationError.message : '';
+				if (!validationError && value !== numValue) {
+					value = numValue;
+					previousValue = numValue;
+				}
+			} else {
+				inputError = required ? 'This field is required' : '';
+				if (value !== undefined) {
+					value = undefined;
+					previousValue = undefined;
+				}
 			}
 		} else {
 			inputError = required ? 'This field is required' : '';
-			value = undefined;
+			if (value !== undefined) {
+				value = undefined;
+				previousValue = undefined;
+			}
 		}
 	}
 

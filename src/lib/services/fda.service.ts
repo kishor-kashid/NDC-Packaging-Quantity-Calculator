@@ -9,6 +9,27 @@ import { handleAPIError, logError } from '../utils/index.js';
 import { formatNDC } from '../utils/index.js';
 
 /**
+ * Formats an NDC code with dashes (5-4-2 or 4-4-2 format)
+ */
+function formatNDCWithDashes(ndc: string): string {
+	const clean = ndc.replace(/[-\s]/g, '');
+	if (clean.length === 11) {
+		// 5-4-2 format
+		return `${clean.substring(0, 5)}-${clean.substring(5, 9)}-${clean.substring(9, 11)}`;
+	} else if (clean.length === 10) {
+		// 5-4-1 format
+		return `${clean.substring(0, 5)}-${clean.substring(5, 9)}-${clean.substring(9, 10)}`;
+	} else if (clean.length === 9) {
+		// 4-4-1 format
+		return `${clean.substring(0, 4)}-${clean.substring(4, 8)}-${clean.substring(8, 9)}`;
+	} else if (clean.length === 8) {
+		// 4-4 format (product NDC without package code)
+		return `${clean.substring(0, 4)}-${clean.substring(4, 8)}`;
+	}
+	return ndc; // Return as-is if can't format
+}
+
+/**
  * Configuration for FDA API
  */
 interface FDAConfig {
@@ -57,45 +78,123 @@ export class FDAService {
 	async getNDCDetails(ndc: string): Promise<NDC | null> {
 		try {
 			const cleanNDC = ndc.replace(/[-\s]/g, '');
-			// Try searching by ndc_package_code first (this gives package-level info with package_description)
-			let url = `${this.config.baseUrl}?search=ndc_package_code:"${cleanNDC}"&limit=1`;
-			let response = await this.fetchWithTimeout(url);
-
-			// If that doesn't work, try product_ndc
-			if (!response.ok || response.status === 404) {
-				url = `${this.config.baseUrl}?search=product_ndc:"${cleanNDC}"&limit=1`;
-				response = await this.fetchWithTimeout(url);
-			}
-
-			if (!response.ok) {
-				if (response.status === 404) {
-					return null;
-				}
-				throw new Error(`FDA API error: ${response.status} ${response.statusText}`);
-			}
-
-			const data: FDAResponse = await response.json();
-
-			if (!data.results || data.results.length === 0) {
-				return null;
-			}
-
-			const result = data.results[0];
 			
-			// Log in development to see what we're getting
+			// Check if this looks like a package-level NDC (11 digits or has 3 parts with dashes)
+			const isPackageNDC = cleanNDC.length === 11 || (ndc.match(/-/g) || []).length === 2;
+			
+			// Try multiple search strategies for different NDC formats
+			// FDA API often requires dashes for product_ndc searches, so try with dashes first
+			const searchStrategies = [
+				// Strategy 1: Try with original format (with dashes) as product NDC - often works best
+				{ field: 'product_ndc', value: ndc },
+				// Strategy 2: Try with original format (with dashes) as package code
+				{ field: 'ndc_package_code', value: ndc },
+				// Strategy 3: Try as package code (cleaned, no dashes)
+				{ field: 'ndc_package_code', value: cleanNDC },
+				// Strategy 4: Try as product NDC (cleaned, no dashes)
+				{ field: 'product_ndc', value: cleanNDC },
+				// Strategy 5: If this is a package NDC, try extracting product NDC and searching packaging array
+				...(isPackageNDC && ndc.includes('-') ? (() => {
+					const parts = ndc.split('-');
+					if (parts.length === 3) {
+						// Extract product NDC (first two parts)
+						const productNDC = `${parts[0]}-${parts[1]}`;
+						return [{ field: 'product_ndc', value: productNDC, extractPackage: true, targetPackage: ndc }];
+					}
+					return [];
+				})() : []),
+				// Strategy 6: If 8-9 digits, try padding to 10 digits (add leading zero) with dashes
+				...(cleanNDC.length >= 8 && cleanNDC.length <= 9 ? [
+					{ field: 'product_ndc', value: formatNDCWithDashes('0' + cleanNDC) },
+					{ field: 'ndc_package_code', value: formatNDCWithDashes('0' + cleanNDC) }
+				] : [])
+			];
+
 			if (process.env.NODE_ENV === 'development') {
-				console.log('FDA getNDCDetails response:', {
-					ndc: cleanNDC,
-					hasPackageDescription: !!result.package_description,
-					packageDescription: result.package_description,
-					hasPackaging: !!(result as any).packaging,
-					ndcPackageCode: result.ndc_package_code,
-					productNdc: result.product_ndc,
-					allKeys: Object.keys(result)
-				});
+				console.log(`Searching for NDC: ${ndc} (cleaned: ${cleanNDC}, length: ${cleanNDC.length})`);
 			}
 
-			return this.parseFDAResponse(result, cleanNDC, undefined);
+			for (const strategy of searchStrategies) {
+				try {
+					const url = `${this.config.baseUrl}?search=${strategy.field}:"${strategy.value}"&limit=1`;
+					
+					if (process.env.NODE_ENV === 'development') {
+						console.log(`Trying search: ${strategy.field}:"${strategy.value}"`);
+					}
+					
+					const response = await this.fetchWithTimeout(url);
+
+					if (!response.ok) {
+						if (response.status === 404) {
+							continue; // Try next strategy
+						}
+						// For other errors, log but continue
+						if (process.env.NODE_ENV === 'development') {
+							console.log(`Search failed with status ${response.status} for ${strategy.field}:"${strategy.value}"`);
+						}
+						continue;
+					}
+
+					const data: FDAResponse = await response.json();
+
+					if (data.results && data.results.length > 0) {
+						let result = data.results[0];
+						
+						// If we're looking for a specific package and the result has a packaging array, find the matching package
+						if ((strategy as any).extractPackage && (result as any).packaging && Array.isArray((result as any).packaging)) {
+							const targetPackage = (strategy as any).targetPackage;
+							const matchingPackage = (result as any).packaging.find((pkg: any) => 
+								pkg.package_ndc === targetPackage || 
+								pkg.package_ndc?.replace(/[-\s]/g, '') === cleanNDC
+							);
+							
+							if (matchingPackage) {
+								// Create a synthetic result with package-level information
+								result = {
+									...result,
+									package_description: matchingPackage.description,
+									ndc_package_code: matchingPackage.package_ndc,
+									package_ndc: matchingPackage.package_ndc
+								} as any;
+								
+								if (process.env.NODE_ENV === 'development') {
+									console.log(`✓ Found package NDC ${targetPackage} in packaging array`);
+								}
+							}
+						}
+						
+						if (process.env.NODE_ENV === 'development') {
+							console.log(`✓ Found NDC using ${strategy.field}:"${strategy.value}"`);
+							console.log('FDA getNDCDetails response:', {
+								ndc: cleanNDC,
+								searchStrategy: strategy,
+								hasPackageDescription: !!result.package_description,
+								packageDescription: result.package_description,
+								hasPackaging: !!(result as any).packaging,
+								ndcPackageCode: result.ndc_package_code,
+								productNdc: result.product_ndc,
+								allKeys: Object.keys(result)
+							});
+						}
+
+						// Use the NDC from the result if available, otherwise use the cleaned input
+						const resultNDC = result.ndc_package_code || result.product_ndc || cleanNDC;
+						return this.parseFDAResponse(result, resultNDC, undefined);
+					}
+				} catch (strategyError) {
+					// Log but continue to next strategy
+					if (process.env.NODE_ENV === 'development') {
+						console.log(`Strategy ${strategy.field}:"${strategy.value}" failed:`, strategyError);
+					}
+					continue;
+				}
+			}
+
+			// All strategies failed
+			if (process.env.NODE_ENV === 'development') {
+				console.log(`No results found for NDC ${ndc} after trying ${searchStrategies.length} strategies`);
+			}
+			return null;
 		} catch (error) {
 			logError(error, 'FDAService.getNDCDetails');
 			throw handleAPIError(error);

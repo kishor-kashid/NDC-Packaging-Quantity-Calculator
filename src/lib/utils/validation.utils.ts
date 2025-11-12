@@ -55,11 +55,12 @@ export function validateNDC(ndc: string | undefined): ValidationError | null {
 	// Remove dashes and spaces for validation
 	const cleanNDC = ndc.replace(/[-\s]/g, '');
 
-	// NDC should be 10 or 11 digits
-	if (!/^\d{10,11}$/.test(cleanNDC)) {
+	// NDC should be 8, 9, 10, or 11 digits
+	// Some NDCs are 8 digits (4-4 format, product NDC), 9 digits (4-4-1), 10 digits (5-4-1 or 4-4-2), or 11 digits (5-4-2)
+	if (!/^\d{8,11}$/.test(cleanNDC)) {
 		return {
 			field: 'ndc',
-			message: 'NDC must be 10 or 11 digits (dashes optional)',
+			message: 'NDC must be 8, 9, 10, or 11 digits (dashes optional)',
 			value: ndc
 		};
 	}

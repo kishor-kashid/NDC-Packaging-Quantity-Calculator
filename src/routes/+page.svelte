@@ -19,7 +19,7 @@
 	let error: string = '';
 
 	async function calculate() {
-		if (!drugName && !drugName.trim()) {
+		if (!drugName || !drugName.trim()) {
 			error = 'Please enter a drug name or NDC';
 			return;
 		}
@@ -29,9 +29,23 @@
 			return;
 		}
 
-		if (!daysSupply || daysSupply <= 0) {
-			error = 'Please enter a valid days supply';
-			return;
+		// Check daysSupply - also try to get it from the input element if it's not set
+		let finalDaysSupply = daysSupply;
+		if (finalDaysSupply === undefined || finalDaysSupply === null || finalDaysSupply <= 0 || isNaN(finalDaysSupply)) {
+			// Try to get value from DOM input element as fallback
+			const inputElement = document.getElementById('days-supply-input') as HTMLInputElement;
+			if (inputElement && inputElement.value) {
+				const inputValue = parseInt(inputElement.value, 10);
+				if (!isNaN(inputValue) && inputValue > 0) {
+					finalDaysSupply = inputValue;
+					daysSupply = inputValue; // Update the bound value
+				}
+			}
+			
+			if (!finalDaysSupply || finalDaysSupply <= 0 || isNaN(finalDaysSupply)) {
+				error = 'Please enter a valid days supply';
+				return;
+			}
 		}
 
 		loading = true;
@@ -47,7 +61,7 @@
 				body: JSON.stringify({
 					drugName: drugName.trim() || undefined,
 					sig: sig.trim(),
-					daysSupply
+					daysSupply: finalDaysSupply
 				})
 			});
 
@@ -78,8 +92,12 @@
 			}
 			
 			// Provide additional guidance for common errors
-			if (error.includes('not found') || error.includes('NORMALIZATION_ERROR')) {
-				error += ' Try using a common drug name like "Lisinopril" or "Metformin", or use an NDC code instead.';
+			// Only add generic suggestion if it's not already in the error message
+			if ((error.includes('not found') || error.includes('NORMALIZATION_ERROR')) && !error.includes('Try searching by drug name')) {
+				// Check if it's an NDC not found error - if so, the suggestion is already included
+				if (!error.includes('NDC code not found')) {
+					error += ' Try using a common drug name like "Lisinopril" or "Metformin", or use an NDC code instead.';
+				}
 			}
 		} finally {
 			loading = false;

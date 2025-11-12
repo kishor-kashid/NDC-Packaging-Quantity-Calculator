@@ -86,7 +86,11 @@
 
 ### Input Formats
 - **Drug Name:** String (brand or generic name)
-- **NDC:** String (11-digit NDC code)
+- **NDC:** String (8-11 digit NDC code, with or without dashes)
+  - 8 digits: 4-4 format (product NDC, e.g., `0591-0885`)
+  - 9 digits: 4-4-1 format
+  - 10 digits: 5-4-1 format (product NDC, e.g., `68180-981`)
+  - 11 digits: 5-4-2 format (package NDC, e.g., `68180-981-01`)
 - **SIG:** String (natural language dosing instructions)
 - **Days Supply:** Number (integer)
 
@@ -176,9 +180,13 @@
 
 ## Known Technical Challenges
 
-1. **API Rate Limits** - May need to implement rate limiting and retry logic
-2. **SIG Parsing** - Natural language parsing complexity
-3. **Package Selection Algorithm** - Optimizing package combinations
-4. **Performance** - Meeting <2 second requirement with external API calls
-5. **Error Handling** - Comprehensive error handling for various failure scenarios
+1. ✅ **API Rate Limits** - Handled with timeout and retry logic, graceful degradation
+2. ✅ **SIG Parsing** - Working correctly with regex patterns for common formats
+3. ✅ **Package Selection Algorithm** - Optimizing package combinations implemented
+4. ✅ **Performance** - Meeting <2 second requirement (verified in testing)
+5. ✅ **Error Handling** - Comprehensive error handling implemented
+6. ✅ **NDC Format Variations** - All formats (8-11 digits, with/without dashes) now supported
+7. ✅ **FDA API Response Parsing** - Product names and package sizes correctly extracted
+8. ✅ **Package-Level NDC Lookup** - Extracts product NDC and searches packaging array
+9. ⚠️ **API Response Caching** - Not yet implemented (planned for performance optimization)
 

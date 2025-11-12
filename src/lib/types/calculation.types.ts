@@ -92,8 +92,8 @@ export interface DispenseRecommendation {
 export interface CalculationResult {
 	/** Input drug information */
 	drugName: string;
-	/** RxCUI code */
-	rxcui: RxCUI;
+	/** RxCUI code (optional if NDC lookup failed but FDA lookup succeeded) */
+	rxcui?: RxCUI;
 	/** Parsed SIG */
 	parsedSIG: ParsedSIG;
 	/** Calculated total quantity needed */
