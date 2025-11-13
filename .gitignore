@@ -99,6 +99,9 @@ dist
 .svelte-kit/
 build/
 
+# Vercel
+.vercel/
+
 # vitepress build output
 **/.vitepress/dist
 
@@ -165,3 +168,4 @@ coverage/
 *.tmp
 *.temp
 .cache/
+.vercel

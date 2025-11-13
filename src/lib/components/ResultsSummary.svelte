@@ -3,7 +3,6 @@
 	import QuantityDisplay from './QuantityDisplay.svelte';
 	import WarningAlerts from './WarningAlerts.svelte';
 	import NDCTable from './NDCTable.svelte';
-	import JSONOutput from './JSONOutput.svelte';
 
 	export let result: CalculationResult | null = null;
 </script>
@@ -38,8 +37,6 @@
 				<NDCTable ndcs={result.availableNDCs} />
 			</div>
 		{/if}
-
-		<JSONOutput data={result} />
 	</div>
 {/if}
 
